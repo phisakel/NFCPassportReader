@@ -134,14 +134,28 @@ extension PassportReader : NFCTagReaderSessionDelegate {
             self.scanCompletedHandler(nil, userError)
         }
     }
+  
+  func tagRemovalDetect(_ tag: NFCTag) {
+      self.readerSession?.connect(to: tag) { (error: Error?) in
+          if error != nil || !tag.isAvailable {
+    
+              self.readerSession?.restartPolling()
+              return
+          }
+          DispatchQueue.global().asyncAfter(deadline: DispatchTime.now() + .milliseconds(500), execute: {
+              self.tagRemovalDetect(tag)
+          })
+      }
+  }
     
     public func tagReaderSession(_ session: NFCTagReaderSession, didDetect tags: [NFCTag]) {
         Log.debug( "tagReaderSession:didDetect - \(tags[0])" )
         if tags.count > 1 {
             Log.debug( "tagReaderSession:more than 1 tag detected! - \(tags)" )
 
-            let errorMessage = NFCViewDisplayMessage.error(.MoreThanOneTagFound)
-            self.invalidateSession(errorMessage: errorMessage, error: NFCPassportReaderError.MoreThanOneTagFound)
+           //  let errorMessage = NFCViewDisplayMessage.error(.MoreThanOneTagFound)
+           // self.invalidateSession(errorMessage: errorMessage, error: NFCPassportReaderError.MoreThanOneTagFound)
+            self.tagRemovalDetect(tags.first!)
             return
         }
 
