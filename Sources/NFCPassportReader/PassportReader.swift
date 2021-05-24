@@ -34,7 +34,8 @@ public class PassportReader : NSObject {
     private var nfcViewDisplayMessageHandler: ((NFCViewDisplayMessage) -> String?)?
     private var masterListURL : URL?
     private var shouldNotReportNextReaderSessionInvalidationErrorUserCanceled : Bool = false
-
+  private var tagDetectTimes = 0
+ 
     // By default, Passive Authentication uses the new RFS5652 method to verify the SOD, but can be switched to use
     // the previous OpenSSL CMS verification if necessary
     public var passiveAuthenticationUsesOpenSSL : Bool = false
@@ -134,7 +135,7 @@ extension PassportReader : NFCTagReaderSessionDelegate {
             self.scanCompletedHandler(nil, userError)
         }
     }
-  
+  // custom routing
   func tagRemovalDetect(_ tag: NFCTag) {
       self.readerSession?.connect(to: tag) { (error: Error?) in
           if error != nil || !tag.isAvailable {
@@ -150,13 +151,19 @@ extension PassportReader : NFCTagReaderSessionDelegate {
     
     public func tagReaderSession(_ session: NFCTagReaderSession, didDetect tags: [NFCTag]) {
         Log.debug( "tagReaderSession:didDetect - \(tags[0])" )
-        if tags.count > 1 {
+        if tags.count > 1 || tagDetectTimes < 2 {
+          tagDetectTimes += 1
+          if tags.count > 1 {
             Log.debug( "tagReaderSession:more than 1 tag detected! - \(tags)" )
-
+          // philip change
            //  let errorMessage = NFCViewDisplayMessage.error(.MoreThanOneTagFound)
            // self.invalidateSession(errorMessage: errorMessage, error: NFCPassportReaderError.MoreThanOneTagFound)
             self.tagRemovalDetect(tags.first!)
             return
+          } else {
+            self.readerSession?.restartPolling()
+            return
+          }
         }
 
         let tag = tags.first!
@@ -326,6 +333,8 @@ extension PassportReader {
         // Mark the next 'invalid session' error as not reportable (we're about to cause it by invalidating the
         // session). The real error is reported back with the call to the completed handler
         self.shouldNotReportNextReaderSessionInvalidationErrorUserCanceled = true
+      // philip
+      readerSession?.alertMessage = self.nfcViewDisplayMessageHandler?(errorMessage) ?? errorMessage.description
         self.readerSession?.invalidate(errorMessage: self.nfcViewDisplayMessageHandler?(errorMessage) ?? errorMessage.description)
         self.scanCompletedHandler(nil, error)
     }
@@ -487,7 +496,7 @@ extension PassportReader {
                     completed(nil)
                 } else {
                     // Retry
-                    if self.elementReadAttempts > 3 {
+                    if self.elementReadAttempts > 1 {
                         self.dataGroupsToRead.removeFirst()
                         self.elementReadAttempts = 0
                     }
