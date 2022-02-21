@@ -90,7 +90,7 @@ public class PassportReader : NSObject {
         }
         
         if NFCTagReaderSession.readingAvailable {
-            readerSession = NFCTagReaderSession(pollingOption: [.iso14443], delegate: self, queue: nil)
+          readerSession = NFCTagReaderSession(pollingOption: [.iso14443,.iso15693], delegate: self, queue: nil)
 
             self.updateReaderSessionMessage( alertMessage: NFCViewDisplayMessage.requestPresentPassport )
             readerSession?.begin()
@@ -101,10 +101,17 @@ public class PassportReader : NSObject {
 @available(iOS 13, *)
 extension PassportReader : NFCTagReaderSessionDelegate {
     // MARK: - NFCTagReaderSessionDelegate
-    public func tagReaderSessionDidBecomeActive(_ session: NFCTagReaderSession) {
+  fileprivate func continuousPolling() {
+    DispatchQueue.global().asyncAfter(deadline: DispatchTime.now() + .milliseconds(700), execute: {
+      if self.tagDetectTimes == 0 {   self.readerSession?.restartPolling(); self.continuousPolling() }
+    })
+  }
+  
+  public func tagReaderSessionDidBecomeActive(_ session: NFCTagReaderSession) {
         // If necessary, you may perform additional operations on session start.
         // At this point RF polling is enabled.
         Log.debug( "tagReaderSessionDidBecomeActive" )
+        continuousPolling()
     }
     
     public func tagReaderSession(_ session: NFCTagReaderSession, didInvalidateWithError error: Error) {
@@ -121,13 +128,14 @@ extension PassportReader : NFCTagReaderSessionDelegate {
             var userError = NFCPassportReaderError.UnexpectedError
             if let readerError = error as? NFCReaderError {
                 Log.error( "tagReaderSession:didInvalidateWithError - Got NFCReaderError - \(readerError.localizedDescription)" )
+              session.restartPolling()
                 switch (readerError.code) {
                 case NFCReaderError.readerSessionInvalidationErrorUserCanceled:
                     Log.error( "     - User cancelled session" )
                     userError = NFCPassportReaderError.UserCanceled
                 default:
-                    Log.error( "     - some other error - \(readerError.localizedDescription)" )
-                    userError = NFCPassportReaderError.UnexpectedError
+                  Log.error( "     - some other error - \(readerError.localizedDescription)" )
+                  userError = NFCPassportReaderError.UnexpectedError
                 }
             } else {
                 Log.error( "tagReaderSession:didInvalidateWithError - Received error - \(error.localizedDescription)" )
@@ -207,7 +215,7 @@ extension PassportReader : NFCTagReaderSessionDelegate {
                 }
             }
 
-            DispatchQueue.global().async {
+          DispatchQueue.global().async {
                 self.startReading( )
             }
         }
