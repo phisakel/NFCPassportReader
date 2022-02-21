@@ -22,6 +22,8 @@ public class PassportReader : NSObject {
     private var dataGroupsToRead : [DataGroupId] = []
     private var readAllDatagroups = false
     private var skipSecureElements = true
+    private var skipCA = false
+    private var skipPACE = false
 
     private var tagReader : TagReader?
     private var bacHandler : BACHandler?
@@ -59,9 +61,11 @@ public class PassportReader : NSObject {
         dataAmountToReadOverride = amount
     }
         
-    public func readPassport( mrzKey : String, tags: [DataGroupId] = [], skipSecureElements :Bool = true, customDisplayMessage: ((NFCViewDisplayMessage) -> String?)? = nil, completed: @escaping (NFCPassportModel?, NFCPassportReaderError?)->()) {
+    public func readPassport( mrzKey : String, tags: [DataGroupId] = [], skipSecureElements :Bool = true, skipCA : Bool = false, skipPACE: Bool = false, customDisplayMessage: ((NFCViewDisplayMessage) -> String?)? = nil, completed: @escaping (NFCPassportModel?, NFCPassportReaderError?)->()) {
         self.passport = NFCPassportModel()
         self.mrzKey = mrzKey
+        self.skipCA = skipCA
+        self.skipPACE = skipPACE
         
         self.dataGroupsToRead.removeAll()
         self.dataGroupsToRead.append( contentsOf:tags)
@@ -186,8 +190,7 @@ extension PassportReader : NFCTagReaderSessionDelegate {
             self.invalidateSession(errorMessage:errorMessage, error: NFCPassportReaderError.TagNotValid)
             return
         }
-        
-        
+                
         // Connect to tag
         Log.debug( "tagReaderSession:connecting to tag - \(tag)" )
         session.connect(to: tag) { [unowned self] (error: Error?) in
@@ -230,6 +233,12 @@ extension PassportReader : NFCTagReaderSessionDelegate {
 extension PassportReader {
     
     func startReading() {
+        // If we have chosen NOT to even attempt PACE, then just do BAC
+        if skipPACE {
+            self.doBACAuthentication()
+            return
+        }
+        
         // Before we start the main work, lets try reading the EF.CardAccess
         tagReader?.readCardAccess(completed: { [unowned self] data, error in
             var ca : CardAccess?
@@ -356,9 +365,12 @@ extension PassportReader {
         Log.info( "Performing Active Authentication" )
 
         let challenge = generateRandomUInt8Array(8)
+        Log.verbose( "Generated Active Authentication challange - \(binToHexRep(challenge))")
         self.tagReader?.doInternalAuthentication(challenge: challenge, completed: { (response, err) in
             if let response = response {
                 self.passport.verifyActiveAuthentication( challenge:challenge, signature:response.data )
+            } else {
+                Log.error( "doInternalAuthentication failed - \(err?.localizedDescription ?? "")" )
             }
 
             completed()
@@ -448,16 +460,18 @@ extension PassportReader {
                             self.dataGroupsToRead = self.dataGroupsToRead.filter { $0 != .DG3 && $0 != .DG4 }
                         }
                     } else if let dg14 = dg as? DataGroup14 {
-                        self.caHandler = ChipAuthenticationHandler(dg14: dg14, tagReader: (self.tagReader)!)
-                        
-                        if caHandler?.isChipAuthenticationSupported ?? false {
+                        if !skipCA {
+                            self.caHandler = ChipAuthenticationHandler(dg14: dg14, tagReader: (self.tagReader)!)
                             
-                            // Do Chip authentication and then continue reading datagroups
-                            readNextDG = false
-                            self.caHandler?.doChipAuthentication() { [unowned self] (success) in
-                                self.passport.chipAuthenticationStatus = .success
+                            if caHandler?.isChipAuthenticationSupported ?? false {
+                                
+                                // Do Chip authentication and then continue reading datagroups
+                                readNextDG = false
+                                self.caHandler?.doChipAuthentication() { [unowned self] (success) in
+                                    self.passport.chipAuthenticationStatus = .success
 
-                                self.readNextDataGroup(completedReadingGroups: completed)
+                                    self.readNextDataGroup(completedReadingGroups: completed)
+                                }
                             }
                         }
                     }
