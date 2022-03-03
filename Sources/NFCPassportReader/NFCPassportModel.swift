@@ -265,12 +265,14 @@ public class NFCPassportModel {
     ///         CMS Verification currently there just in case
     public func verifyPassport( masterListURL: URL?, useCMSVerification : Bool = false ) {
         if let masterListURL = masterListURL {
-            do {
-                try validateAndExtractSigningCertificates( masterListURL: masterListURL )
-            } catch let error {
-                verificationErrors.append( error )
-            }
-        }
+          do { try validateAndExtractSigningCertificates( masterListURL: masterListURL ) }
+          catch let error {
+            if let masterListOldURL = Bundle.main.url(forResource: "masterListOld", withExtension: ".pem") {
+              do { try validateAndExtractSigningCertificates( masterListURL: masterListOldURL ) }
+              catch _ { verificationErrors.append( error ) }
+            } else { verificationErrors.append( error ) }
+          } // end catch
+        } // end if
         
         do {
             try ensureReadDataNotBeenTamperedWith( useCMSVerification : useCMSVerification )
