@@ -1,8 +1,32 @@
+v2.0.0
+   Switched app over to user async/await - makes the code paths much simpler
+   Added fix for DG11 names - thanks @TerjeLon 
+   Added fix for missing reader session invalidation - thanks @TerjeLon
+   Added fix for crash when there is no image in the DG2 - thanks @brkerturk 
+
+v1.1.9
+   Retrieves names from DG11 if present otherwise fall back to DG1 - thanks @TerjeLon
+   Fixed bug with Chip Authentication - thanks @pauphi and @jennytellne-cygni 
+   Fix Active Authentication with ECDSA signature - thanks @pauphi
+   Fix for CA when keyId is not nil - thanks @pauphi
+
+   This will be the last < iOS 13 version as will be moving to async/await
+
+v1.1.8
+   Retrieves personal  number from DG11 (if its present) otherwise fall back to DG1 (as per ICAO Docs) - thanks @TerjeLon
+   Added support for BDC Date/time encoding for DG12 - thanks @jakub-vallo 
+   Fixed wrong type in DG12 - thanks @jakub-vallo and @markus-mohemian
+   Fixed extract of ICAO Masterlist extract - openssl cms verify and extract signed command output format changed
+        thanks @georgepadayatti
+   Fixed issue with continuing scan after read session has been invalidated - thanks @markus-mohemian
+   
+V1.1.7
+   Fix for SecureMessaging - buildD097 where we ignored if length was >= 256 - thanks to @pmitche
+
 V1.1.6
    Fixed tag in DG11 - Thanks @Jusstas.
    Fixed deploying to iOS 12 - added weak framework CryptoTokenKit to podspec - thanks @Jeroenbb94
    Fixed crash in getNextTag when not enough data is present (happens with some passports) - thanks @Benny-iPhone
-   
    
 V1.1.5
    Fixed potential issue when checking for invalid ECDSA signatures. Now rather than assuming if both BigNums
@@ -15,6 +39,7 @@ v1.1.4
    Fixed use of ephemeral params that managed to get reverted!
    Added a couple of addition error messages to TagReader
    Added MRZ key logging
+   Added ability to turn off logging completely
 
 v1.1.3
     Fix for some ECDSA based message digests which seem to have invalid format (0x00 prefixed on the integers)
