@@ -40,6 +40,8 @@ extension NFCViewDisplayMessage {
                         return "MRZ Key not valid for this document."
                     case NFCPassportReaderError.ResponseError(let description, let sw1, let sw2):
                         return "Sorry, there was a problem reading the passport. \(description) - (0x\(sw1), 0x\(sw2)"
+                case NFCPassportReaderError.UserCanceled:
+                    return "User cancelled"
                     default:
                         return "Sorry, there was a problem reading the passport. Please try again"
                 }

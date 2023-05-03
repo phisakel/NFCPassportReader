@@ -36,7 +36,7 @@ python extract.py [Country master list.ml|ICAO LDIF file]
     e.g.
     python extract.py icaopkd-002-ml-000119.ldif
 
-    python3 extract.py icaopkd-002-ml-000201.ldif
+    python3 extract.py icaopkd-002-ml-000226.ldif
 
 It will run through the masterlist(s) contained within the file and you should end up with a new masterList.pem file which is a concatenation of all the unique certificates.
 
