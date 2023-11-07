@@ -20,7 +20,7 @@ public enum LogLevel : Int, CaseIterable {
 
 public class Log {
     public static var logLevel : LogLevel = .info
-    public static var storeLogs = false
+    public static var storeLogs = true
     public static var logData = [String]()
     
     private static let df = DateFormatter()
