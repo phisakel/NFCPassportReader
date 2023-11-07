@@ -7,15 +7,36 @@
 //
 
 import Foundation
+import OSLog
 
-// TODO: Quick log functions - will move this to something better
+
+extension Logger {
+    /// Using your bundle identifier is a great way to ensure a unique identifier.
+    private static var subsystem = Bundle.main.bundleIdentifier!
+    
+    /// Tag Reader logs
+    static let passportReader = Logger(subsystem: subsystem, category: "passportReader")
+
+    /// Tag Reader logs
+    static let tagReader = Logger(subsystem: subsystem, category: "tagReader")
+
+    /// SecureMessaging logs
+    static let secureMessaging = Logger(subsystem: subsystem, category: "secureMessaging")
+
+    static let openSSL = Logger(subsystem: subsystem, category: "openSSL")
+
+    static let bac = Logger(subsystem: subsystem, category: "BAC")
+    static let chipAuth = Logger(subsystem: subsystem, category: "chipAuthentication")
+    static let pace = Logger(subsystem: subsystem, category: "PACE")
+}
+
 public enum LogLevel : Int, CaseIterable {
-    case verbose = 0
-    case debug = 1
-    case info = 2
-    case warning = 3
-    case error = 4
-    case none = 5
+	case verbose = 0
+	case debug = 1
+	case info = 2
+	case warning = 3
+	case error = 4
+	case none = 5
 }
 
 public class Log {

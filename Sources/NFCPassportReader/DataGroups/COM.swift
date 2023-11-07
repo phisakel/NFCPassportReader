@@ -5,24 +5,24 @@
 //
 
 import Foundation
+import OSLog
 
 @available(iOS 13, macOS 10.15, *)
 public class COM : DataGroup {
     public private(set) var version : String = "Unknown"
     public private(set) var unicodeVersion : String = "Unknown"
     public private(set) var dataGroupsPresent : [String] = []
-    
+
+    public override var datagroupType: DataGroupId { .COM }
+
     required init( _ data : [UInt8] ) throws {
         try super.init(data)
-        datagroupType = .COM
     }
     
     override func parse(_ data: [UInt8]) throws {
         var tag = try getNextTag()
-        if tag != 0x5F01 {
-            throw NFCPassportReaderError.InvalidResponse
-        }
-        
+        try verifyTag(tag, equals: 0x5F01)
+
         // Version is 4 bytes (ascii) - AABB
         // AA is major number, BB is minor number
         // e.g.  48 49 48 55 -> 01 07 -> 1.7
@@ -35,9 +35,7 @@ public class COM : DataGroup {
             }
         }
         tag = try getNextTag()
-        if tag != 0x5F36 {
-            throw NFCPassportReaderError.InvalidResponse
-        }
+        try verifyTag(tag, equals: 0x5F36)
         
         versionBytes = try getNextValue()
         if versionBytes.count == 6 {
@@ -50,9 +48,7 @@ public class COM : DataGroup {
         }
         
         tag = try getNextTag()
-        if tag != 0x5C {
-            throw NFCPassportReaderError.InvalidResponse
-        }
+        try verifyTag(tag, equals: 0x5C)
         
         let vals = try getNextValue()
         for v in vals {
@@ -60,6 +56,6 @@ public class COM : DataGroup {
                 dataGroupsPresent.append( DataGroupParser.dataGroupNames[index] )
             }
         }
-        Log.debug( "DG Found - \(dataGroupsPresent)" )
+        Logger.passportReader.debug( "DG Found - \(self.dataGroupsPresent)" )
     }
 }
