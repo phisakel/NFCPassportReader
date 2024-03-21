@@ -15,19 +15,19 @@ extension Logger {
     private static var subsystem = Bundle.main.bundleIdentifier!
     
     /// Tag Reader logs
-    static let passportReader = Logger(subsystem: subsystem, category: "passportReader")
+    static let passportReader = Log() // Logger(subsystem: subsystem, category: "passportReader")
 
     /// Tag Reader logs
-    static let tagReader = Logger(subsystem: subsystem, category: "tagReader")
+    static let tagReader = Log() //Logger(subsystem: subsystem, category: "tagReader")
 
     /// SecureMessaging logs
-    static let secureMessaging = Logger(subsystem: subsystem, category: "secureMessaging")
+    static let secureMessaging = Log() //Logger(subsystem: subsystem, category: "secureMessaging")
 
-    static let openSSL = Logger(subsystem: subsystem, category: "openSSL")
+    static let openSSL = Log() //Logger(subsystem: subsystem, category: "openSSL")
 
-    static let bac = Logger(subsystem: subsystem, category: "BAC")
-    static let chipAuth = Logger(subsystem: subsystem, category: "chipAuthentication")
-    static let pace = Logger(subsystem: subsystem, category: "PACE")
+    static let bac = Log() //Logger(subsystem: subsystem, category: "BAC")
+    static let chipAuth = Log() //Logger(subsystem: subsystem, category: "chipAuthentication")
+    static let pace = Log() //Logger(subsystem: subsystem, category: "PACE")
 }
 
 public enum LogLevel : Int, CaseIterable {
@@ -62,9 +62,24 @@ public class Log {
     public class func error( _ msg : @autoclosure () -> String ) {
         log( .error, msg )
     }
-    
+    // philip
+	public func verbose( _ msg : @autoclosure () -> String ) {
+		Self.log( .verbose, msg )
+	}
+	public func debug( _ msg : @autoclosure () -> String ) {
+		Self.log( .debug, msg )
+	}
+	public func info( _ msg : @autoclosure () -> String ) {
+		Self.log( .info, msg )
+	}
+	public func warning( _ msg : @autoclosure () -> String ) {
+		Self.log( .warning, msg )
+	}
+	public func error( _ msg : @autoclosure () -> String ) {
+		Self.log( .error, msg )
+	}
     public class func clearStoredLogs() {
-        logData.removeAll()
+			Self.logData.removeAll()
     }
     
     class func log( _ logLevel : LogLevel, _ msg : () -> String ) {
