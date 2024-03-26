@@ -40,7 +40,7 @@ public enum LogLevel : Int, CaseIterable {
 }
 
 public class Log {
-    public static var logLevel : LogLevel = .info
+    public static var logLevel : LogLevel = .debug
     public static var storeLogs = true
     public static var logData = [String]()
     
