@@ -21,8 +21,8 @@ let package = Package(
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
-        .target(name: "NFCPassportReader", dependencies: [target(name: "OpenSSL")]),
-        .binaryTarget(name: "OpenSSL", path: "./OpenSSL.xcframework")
+			.target(name: "NFCPassportReader", dependencies: [.target(name: "OpenSSL")]),
+        .binaryTarget(name: "OpenSSL", path: "./Sources/OpenSSL.xcframework")
 
     ]
 )
