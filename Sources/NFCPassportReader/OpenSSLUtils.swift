@@ -126,9 +126,9 @@ public class OpenSSLUtils {
         
         var ret = [X509Wrapper]()
         if let certs = certs  {
-            let certCount = sk_X509_num(certs)
+            let certCount = OPENSSL_sk_num(certs)
             for i in 0 ..< certCount {
-                let x = sk_X509_value(certs, i);
+                let x = OPENSSL_sk_value(certs, i);
                 if let x509 = X509Wrapper(with:x) {
                     ret.append( x509 )
                 }
@@ -190,9 +190,9 @@ public class OpenSSLUtils {
         
         // Get chain and issue certificate is the last cert in the chain
         let chain = X509_STORE_CTX_get1_chain(store);
-        let nrCertsInChain = sk_X509_num(chain)
+        let nrCertsInChain = OPENSSL_sk_num(chain)
         if nrCertsInChain > 1 {
-            let cert = sk_X509_value(chain, nrCertsInChain-1)
+            let cert = OPENSSL_sk_value(chain, nrCertsInChain-1)
             if let certWrapper = X509Wrapper(with: cert) {
                 return .success( certWrapper )
             }
@@ -572,7 +572,7 @@ public class OpenSSLUtils {
     public static func getPublicKeyData(from key:OpaquePointer) -> [UInt8]? {
         var data : [UInt8] = []
         // Get Key type
-        let v = EVP_PKEY_base_id( key )
+        let v = EVP_PKEY_get_base_id( key )
         if v == EVP_PKEY_DH || v == EVP_PKEY_DHX {
             guard let dh = EVP_PKEY_get0_DH(key) else {
                 return nil
@@ -608,7 +608,7 @@ public class OpenSSLUtils {
     public static func decodePublicKeyFromBytes(pubKeyData: [UInt8], params: OpaquePointer) -> OpaquePointer? {
         var pubKey : OpaquePointer?
         
-        let keyType = EVP_PKEY_base_id( params )
+        let keyType = EVP_PKEY_get_base_id( params )
         if keyType == EVP_PKEY_DH || keyType == EVP_PKEY_DHX {
             
             let dhKey = DH_new()
@@ -657,7 +657,7 @@ public class OpenSSLUtils {
         // OR I'm misunderstanding something (which is more possible)
         // Works fine though for ECDH keys
         var secret : [UInt8]
-        let keyType = EVP_PKEY_base_id( privateKeyPair )
+        let keyType = EVP_PKEY_get_base_id( privateKeyPair )
         if keyType == EVP_PKEY_DH || keyType == EVP_PKEY_DHX {
             // Get bn for public key
             let dh = EVP_PKEY_get1_DH(privateKeyPair);
