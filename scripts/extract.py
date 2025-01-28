@@ -9,52 +9,61 @@ fingerprints = []
 totalCerts = 0
 certNr = 1
 
-def main( filename ):
-    global certNr
+def main(file1, file2):
+    global totalCerts
 
-    # First, make sure that the version of openssl we are using supports the cms command
-    # the version supplied with OS X doesn't - you would need to get a different one in this case
-    # e.g. through Homebrew
-    out, err = execute( "openssl cms" )
-    if err.decode().find( "'cms' is an invalid command" ) != -1:
-       print( "The version of OpenSSL you are using doesn't support the CMS command" )
-       print( "You need to get a version that does (e.g. from Homebrew)" )
-       exit( 1 )
+    # Check if OpenSSL supports the CMS command
+    out, err = execute("openssl cms")
+    if err.decode().find("'cms' is an invalid command") != -1:
+        print("The version of OpenSSL you are using doesn't support the CMS command")
+        print("You need to get a version that does (e.g., from Homebrew)")
+        exit(1)
 
+    # Remove old master list if it exists
+    if os.path.exists("masterList.pem"):
+        os.remove("masterList.pem")
 
-    # remove old master list
-    if os.path.exists( "masterList.pem" ):
-        os.remove( "masterList.pem" )
+    # Process the first file
+    print(f"Processing file: {file1}")
+    process_file(file1)
 
-    # Identify Type of file - either LDIF or MasterList (CMS)
-    if filename.lower().endswith( ".ldif" ):
-        # Read and parse LDIF File
-        (cns,masterLists) = readAndExtractLDIFFile( filename )
-    elif filename.lower().endswith( ".ml" ):
-        masterLists = readInMasterListFile( filename )
+    # Process the second file
+    print(f"Processing file: {file2}")
+    process_file(file2)
+
+    print("====================================")
+    print(f"Created masterList.pem containing {totalCerts} certificates")
+
+def process_file(filename):
+    global totalCerts, certNr
+
+    # Identify the type of file
+    if filename.lower().endswith(".ldif"):
+        # Read and parse LDIF file
+        cns, masterLists = readAndExtractLDIFFile(filename)
+    elif filename.lower().endswith(".ml"):
+        masterLists = readInMasterListFile(filename)
         cns = ["MasterList ml file"]
+    else:
+        print(f"Unsupported file format: {filename}")
+        return
 
-    print( f"Read in {len(masterLists)} masterlist files" )
-    if filename.lower().endswith( ".ldif" ):
-        print( f"Read in {cns} CNS" )
+    print(f"Read in {len(masterLists)} masterlist files from {filename}")
+    if filename.lower().endswith(".ldif"):
+        print(f"Read in {cns} CNS")
 
     for index, ml in enumerate(masterLists):
         certNr = 1
-        print( "-----------------------------------" )
-        if filename.lower().endswith( ".ldif" ):
+        print("-----------------------------------")
+        if filename.lower().endswith(".ldif"):
             print(f"Verifying and extracting MasterList {index} - {cns[index]}")
         try:
-            extractCertsFromMasterlist( ml )
+            extractCertsFromMasterlist(ml)
         except Exception as e:
-            print( "Error extracting certs from masterlist") 
-            print( "Skipping this masterlist - certs from this list will not be included.")
+            print("Error extracting certs from masterlist")
+            print("Skipping this masterlist - certs from this list will not be included.")
 
-    print( "====================================" )
-    print( f"Created MasterList.pem containing {totalCerts} certificates")
-
-
-def readAndExtractLDIFFile( file ):
-    
+def readAndExtractLDIFFile(file):
     adding = False
     certs = []
     cns = []
@@ -62,138 +71,126 @@ def readAndExtractLDIFFile( file ):
     with open(file, "r") as inf:
         cert = ""
         for line in inf:
-            if line.startswith( "cn: "):
+            if line.startswith("cn: "):
                 cn = line[4:]
-            elif line.startswith( "CscaMasterListData:: ") or line.startswith( "pkdMasterListContent:: "):
+            elif line.startswith("CscaMasterListData:: ") or line.startswith("pkdMasterListContent:: "):
                 cert = line[21:]
                 adding = True
-            elif not line.startswith(" ") and adding == True:
+            elif not line.startswith(" ") and adding:
                 adding = False
-                certs.append( cert )
-                cns.append( cn )
+                certs.append(cert)
+                cns.append(cn)
                 cert = ""
-            elif adding == True:
+            elif adding:
                 cert += line
         if cert != "":
-            certs.append( cert )
-            cns.append( cn )
+            certs.append(cert)
+            cns.append(cn)
 
-    print( f"Read {len(certs)} certs" )
+    print(f"Read {len(certs)} certs from {file}")
     masterLists = []
-    for index, cert in enumerate(certs):
+    for cert in certs:
         data = base64.b64decode(cert)
-        masterLists.append( data )
+        masterLists.append(data)
 
-    return (cns,masterLists)
+    return cns, masterLists
 
-def readInMasterListFile( file ):
+def readInMasterListFile(file):
     with open(file, "rb") as inf:
         data = inf.read()
 
     return [data]
 
-def extractCertsFromMasterlist( masterList ):
+def extractCertsFromMasterlist(masterList):
     global totalCerts
 
     # Run openssl cms to verify and extract the signed data
-    cmd = f"openssl cms -inform der -noverify -verify"
-    (signedData, err) = execute( cmd, masterList )
+    cmd = "openssl cms -inform der -noverify -verify"
+    signedData, err = execute(cmd, masterList)
 
     err = err.decode("utf8").strip().replace("CMS ", "")
 
     if err != "Verification successful":
-        print( f"[{err.decode('utf8')}]" )
-        raise Exception( "Verification of Masterlist data failed" )
+        print(f"[{err}]")
+        raise Exception("Verification of Masterlist data failed")
 
-    print( "MasterList Verification successful" )
+    print("MasterList Verification successful")
 
-    certList = extractPEMCertificates( signedData )
+    certList = extractPEMCertificates(signedData)
 
-    print( "Removing duplicates")
+    print("Removing duplicates")
     uniqueCerts = [x for x in certList if uniqueHash(x)]
 
-    print( f"Removed {len(certList)-len(uniqueCerts)} duplicate certificates")
+    print(f"Removed {len(certList) - len(uniqueCerts)} duplicate certificates")
     totalCerts += len(uniqueCerts)
 
     # Append to masterList.pem
     with open("masterList.pem", "ab") as f:
         for c in uniqueCerts:
             f.write(c)
-            
-def extractPEMCertificates( signedData ):
-    global certNr 
-    print( "Extracting all certificates from payload" )
-    cmd = f"openssl asn1parse -inform der -i"
-    (data, err) = execute( cmd, signedData )
 
-    lines = data.decode("utf8").strip().split( "\n" )
+def extractPEMCertificates(signedData):
+    global certNr
+    print("Extracting all certificates from payload")
+    cmd = "openssl asn1parse -inform der -i"
+    data, err = execute(cmd, signedData)
+
+    lines = data.decode("utf8").strip().split("\n")
     valid = False
     certs = []
 
-    certCount = len([i for i in lines if "d=2" in i]) 
+    certCount = len([i for i in lines if "d=2" in i])
     for line in lines:
-        if re.search( r":d=1", line ):
+        if re.search(r":d=1", line):
             valid = False
-        if re.search( r"d=1.*SET", line ):
+        if re.search(r"d=1.*SET", line):
             valid = True
-        if re.search( r"d=2", line ) and valid:
+        if re.search(r"d=2", line) and valid:
             # Parse line
-            match = re.search( r"^ *([0-9]*).*hl= *([0-9]*).*l= *([0-9]*).*", line)
+            match = re.search(r"^ *([0-9]*).*hl= *([0-9]*).*l= *([0-9]*).*", line)
             if match:
-                print( f"Extracting cert {certNr} of {certCount}", end="\r" )
+                print(f"Extracting cert {certNr} of {certCount}", end="\r")
                 certNr += 1
                 offset = int(match.group(1))
                 header_len = int(match.group(2))
                 octet_len = int(match.group(3))
 
                 # Extract PEM certificate
-                data = signedData[offset : offset+header_len+octet_len]
-                (cert,err) = execute( f"openssl x509 -inform der -outform pem", data )
+                data = signedData[offset : offset + header_len + octet_len]
+                cert, err = execute("openssl x509 -inform der -outform pem", data)
                 certs.append(cert)
             else:
-                print( "Failed match")
-                
-    print( f"\nExtracted {len(certs)} certs")
+                print("Failed match")
+
+    print(f"\nExtracted {len(certs)} certs")
     return certs
 
-def uniqueHash( cert ):
-    (data,err) = execute( "openssl x509 -hash -fingerprint -inform PEM -noout", cert )
+def uniqueHash(cert):
+    data, err = execute("openssl x509 -hash -fingerprint -inform PEM -noout", cert)
     items = data.decode("utf8").split("\n")
-    hash = items[0].strip()
     fingerprint = items[1].strip()
     if fingerprint not in fingerprints:
-        fingerprints.append( fingerprint )
+        fingerprints.append(fingerprint)
         return True
 
-    #print( f"Found duplicate hash - {hash}")
     return False
 
-def writeToDisk(name, data):
-    with open( name, "wb" ) as f:
-        f.write(data)
-
-def removeFromDisk(name):
-    try:
-        os.remove(name)
-    except:
-        pass
-
-def execute(cmd, data = None, empty=False):
+def execute(cmd, data=None):
     res = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if data != None:
+    if data is not None:
         res.stdin.write(data)
         res.stdin.close()
     out = res.stdout.read()
     err = res.stderr.read()
 
-    return (out, err)
+    return out, err
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print( "Invalid number of parameters: ")
-        print( "" )
-        print( "Usage - python extract.py [masterlist ml file|icao ldif file]")
-        print( "" )
+    if len(sys.argv) != 3:
+        print("Invalid number of parameters:")
+        print("")
+        print("Usage - python extract.py [masterlist1.ml|ldif] [masterlist2.ml|ldif]")
+        print("")
         exit(1)
 
-    main( sys.argv[1] )
+    main(sys.argv[1], sys.argv[2])

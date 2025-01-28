@@ -32,11 +32,9 @@ The version that comes with macOS (including Catalina) doesn't support this so y
 ## Usage
 To run the script, simply run:
 python extract.py [Country master list.ml|ICAO LDIF file]
+### update 28 Jan 2025 takes 2 master files as input and outputs a single master file
 
-    e.g.
-    python extract.py icaopkd-002-ml-000119.ldif
-
-    python3 extract.py icaopkd-002-complete-000296.ldif
+    python3 extract.py icaopkd-002-complete-000296.ldif DE_ML_2025-01-23-10-43-03.ml
 
 It will run through the masterlist(s) contained within the file and you should end up with a new masterList.pem file which is a concatenation of all the unique certificates.
 
