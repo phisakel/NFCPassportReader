@@ -90,14 +90,22 @@ public class PassportReader : NSObject {
     public func overrideNFCDataAmountToRead( amount: Int ) {
         dataAmountToReadOverride = amount
     }
+	
+	public static func overrideReaderSettings(for countryCode: String) -> (Bool, Bool, Bool)? {
+		switch countryCode {
+		case "SWE": (true, true, false)
+		default: nil
+		}
+	}
 
-    public func readPassport( mrzKey : String, tags : [DataGroupId] = [], skipSecureElements : Bool = true, skipCA : Bool = false, skipPACE : Bool = false, useExtendedMode : Bool = false, customDisplayMessage : ((NFCViewDisplayMessage) -> String?)? = nil) async throws -> NFCPassportModel {
+	public func readPassport(countryCode: String, mrzKey: String, tags : [DataGroupId] = [], skipSecureElements : Bool = true, skipCA : Bool = false, skipPACE : Bool = false, useExtendedMode : Bool = false, customDisplayMessage : ((NFCViewDisplayMessage) -> String?)? = nil) async throws -> NFCPassportModel {
 
         self.passport = NFCPassportModel()
         self.mrzKey = mrzKey
-        self.skipCA = skipCA
-        self.skipPACE = skipPACE
-        self.useExtendedMode = useExtendedMode
+		let settOver = Self.overrideReaderSettings(for: countryCode)
+		self.useExtendedMode = settOver?.0 ?? useExtendedMode
+    self.skipCA = settOver?.1 ?? skipCA
+    self.skipPACE = settOver?.2 ?? skipPACE
 
         self.dataGroupsToRead.removeAll()
         self.dataGroupsToRead.append( contentsOf:tags)
